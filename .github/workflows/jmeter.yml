@@ -4,20 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      test_type:
-        description: 'Tipo de teste'
-        required: true
-        default: 'load'
-        type: choice
-        options:
-          - load
-          - spike
-          - both
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   performance-test:
-    name: JMeter Performance Test
+    name: JMeter Load Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -38,25 +33,16 @@ jobs:
           echo "$PWD/apache-jmeter-5.6.3/bin" >> $GITHUB_PATH
 
       - name: Criar pastas de resultados
-        run: mkdir -p results reports/load-test reports/spike-test
+        run: mkdir -p results reports/load-test
 
       - name: Executar Load Test
-        if: ${{ github.event.inputs.test_type == 'load' || github.event.inputs.test_type == 'both' || github.event_name == 'push' }}
         run: |
           jmeter -n \
             -t scripts/load-test.jmx \
             -l results/load-test-results.jtl \
             -e -o reports/load-test
 
-      - name: Executar Spike Test
-        if: ${{ github.event.inputs.test_type == 'spike' || github.event.inputs.test_type == 'both' }}
-        run: |
-          jmeter -n \
-            -t scripts/spike-test.jmx \
-            -l results/spike-test-results.jtl \
-            -e -o reports/spike-test
-
-      - name: Upload relatório Load Test
+      - name: Upload relatório (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -64,18 +50,19 @@ jobs:
           path: reports/load-test/
           retention-days: 30
 
-      - name: Upload relatório Spike Test
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: jmeter-spike-test-report
-          path: reports/spike-test/
-          retention-days: 30
-
-      - name: Upload arquivos JTL
+      - name: Upload arquivo JTL (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: jmeter-jtl-results
-          path: results/
+          path: results/load-test-results.jtl
           retention-days: 30
+
+      - name: Publicar no GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./reports/load-test
+          publish_branch: gh-pages
+          commit_message: "ci: atualiza relatório JMeter - run #${{ github.run_number }}"
