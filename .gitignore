@@ -1,0 +1,12 @@
+# Resultados gerados pelo JMeter (não versionar)
+results/
+reports/
+
+# Binários do JMeter (se instalado localmente)
+apache-jmeter*/
+*.tgz
+*.zip
+
+# Logs do JMeter
+*.log
+jmeter.log
